@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Re_Test.Data;
+using Re_Test.Extensions;
 using Re_Test.Services;
 using StackExchange.Redis;
 
@@ -12,16 +13,26 @@ namespace Re_Test
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddDbContext<Re_TestContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("Re_TestContext") ?? throw new InvalidOperationException("Connection string 'Re_TestContext' not found.")));
+            {
+            options.UseSqlServer(builder.Configuration.GetConnectionString("Re_TestContext") ?? throw new InvalidOperationException("Connection string 'Re_TestContext' not found."));
+            });
+
 
             // Add services to the container.
-
+            builder.Services.AddServiceDependencyInjection();
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 
-            builder.Services.AddScoped<ICacheService, CacheService>();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            if(builder.Environment.IsTestEnv())
+            {
+                builder.Services.AddDbContext<Re_TestContext>(options =>
+                {
+                    options.UseInMemoryDatabase("InMemoryDB");
+                });
+            }
 
             var app = builder.Build();
 

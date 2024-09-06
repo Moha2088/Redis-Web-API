@@ -6,12 +6,22 @@ namespace Re_Test.Services
 {
     public class CacheService : ICacheService
     {
-       private IDatabase _database;
+        private IDatabase _database;
+
 
         public CacheService()
         {
-            var redis = ConnectionMultiplexer.Connect("localhost:7090");
+            var redisConfig = new ConfigurationOptions
+            {
+                EndPoints = { "localhost:5001" },
+                Password = "mySecretPassword",
+                AbortOnConnectFail = false,
+                ConnectRetry = 10
+            };
+
+            var redis = ConnectionMultiplexer.Connect(redisConfig);
             _database = redis.GetDatabase();
+            _database.Ping();
         }
 
         public T GetData<T>(string key)
@@ -29,9 +39,10 @@ namespace Re_Test.Services
             return false;
         }
 
-        public bool SetData<T>(string key, T value)
+        public bool SetData<T>(string key, T value, DateTimeOffset expirationTime)
         {
-            return _database.StringSet(key, JsonSerializer.Serialize(value));
+            var expTime = expirationTime.Subtract(DateTime.Now);
+            return _database.StringSet(key, JsonSerializer.Serialize(value), expTime);
         }
     }
 }

@@ -17,18 +17,34 @@ namespace Re_Test.Controllers
     {
         private readonly Re_TestContext _context;
         private readonly ICacheService _cacheService;
+        private readonly ILogger _logger;
 
-        public ProductsController(Re_TestContext context, ICacheService service)
+        public ProductsController(Re_TestContext context, ICacheService service, ILogger logger)
         {
             _context = context;
             _cacheService = service;
+            _logger = logger;
         }
 
         // GET: api/Products
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Product>>> GetProduct()
         {
-            return await _context.Product.ToListAsync();
+            var cachedData = _cacheService.GetData<IEnumerable<Product>>("products");
+
+            if (cachedData != null)
+            {
+                return Ok(cachedData);
+            }
+
+            var products = await _context.Product.ToListAsync();
+
+            if (!products.Any())
+            {
+                return NotFound();
+            }
+
+            return Ok(products);
         }
 
         // GET: api/Products/5
@@ -81,10 +97,16 @@ namespace Re_Test.Controllers
         [HttpPost]
         public async Task<ActionResult<Product>> PostProduct(Product product)
         {
-            _context.Product.Add(product);
-            await _context.SaveChangesAsync();
+            var expirationTime = DateTime.Now.AddSeconds(60);
+            var created = _cacheService.SetData("", product, expirationTime);
+            
+            if (created)
+            {
+                _logger.LogInformation("Product created and stored in cache");
+                return Created(nameof(PostProduct), product);
+            }
 
-            return CreatedAtAction("GetProduct", new { id = product.Id }, product);
+            return BadRequest();
         }
 
         // DELETE: api/Products/5

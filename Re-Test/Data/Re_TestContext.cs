@@ -14,6 +14,16 @@ namespace Re_Test.Data
         {
         }
 
+        protected override void OnModelCreating(ModelBuilder builder)
+        {          
+            var productEntity = builder.Entity<Product>();
+            productEntity.HasKey(x => x.Id);
+            productEntity.Property(x => x.Name).HasColumnType("nvarchar(256)");
+            productEntity.Property(x => x.Price).HasColumnType("decimal");
+            productEntity.HasIndex(x => x.Id);
+  
+        }
+
         public DbSet<Re_Test.Models.Product> Product { get; set; } = default!;
     }
 }
